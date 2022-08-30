@@ -5,6 +5,6 @@ pluginManagement {
     }
 }
 
-rootProject.name = "forktest"
+rootProject.name = "limbopaper"
 
-include("forktest-api", "forktest-server")
+include("limbopaper-api", "limbopaper-server")
