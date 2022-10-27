@@ -1,0 +1,491 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Xymb <xymb@endcrystal.me>
+Date: Thu, 27 Oct 2022 03:29:32 +0200
+Subject: [PATCH] LimboPaper optimizations.
+
+
+diff --git a/src/main/java/net/minecraft/server/MinecraftServer.java b/src/main/java/net/minecraft/server/MinecraftServer.java
+index d6ef8089790a7dca8ed9ccd89042f1c0f14d1882..29a43d30491bbd942764914e5d6974637497cd82 100644
+--- a/src/main/java/net/minecraft/server/MinecraftServer.java
++++ b/src/main/java/net/minecraft/server/MinecraftServer.java
+@@ -1532,10 +1532,10 @@ public abstract class MinecraftServer extends ReentrantBlockableEventLoop<TickTa
+ 
+             try {
+                 worldserver.timings.doTick.startTiming(); // Spigot
+-                worldserver.tick(shouldKeepTicking);
++                worldserver.limboTick(shouldKeepTicking); // LimboPaper
+                 // Paper start
+                 for (final io.papermc.paper.chunk.SingleThreadChunkRegionManager regionManager : worldserver.getChunkSource().chunkMap.regionManagers) {
+-                    regionManager.recalculateRegions();
++                    //regionManager.recalculateRegions(); // LimboPaper
+                 }
+                 // Paper end
+                 worldserver.timings.doTick.stopTiming(); // Spigot
+diff --git a/src/main/java/net/minecraft/server/PlayerAdvancements.java b/src/main/java/net/minecraft/server/PlayerAdvancements.java
+index a0c19503aabab5378d672a30163d35a5ba05b6c1..41f04c635d5ba338a157470db0fc6ee59ffa9012 100644
+--- a/src/main/java/net/minecraft/server/PlayerAdvancements.java
++++ b/src/main/java/net/minecraft/server/PlayerAdvancements.java
+@@ -153,7 +153,7 @@ public class PlayerAdvancements {
+     }
+ 
+     private void load(ServerAdvancementManager advancementLoader) {
+-        if (this.file.isFile()) {
++        if (this.file.isFile() && false) { // LimboPaper
+             try {
+                 JsonReader jsonreader = new JsonReader(new StringReader(Files.toString(this.file, StandardCharsets.UTF_8)));
+ 
+@@ -214,7 +214,7 @@ public class PlayerAdvancements {
+     }
+ 
+     public void save() {
+-        if (org.spigotmc.SpigotConfig.disableAdvancementSaving) return; // Spigot
++        if (org.spigotmc.SpigotConfig.disableAdvancementSaving || true) return; // Spigot // LimboPaper
+         Map<ResourceLocation, AdvancementProgress> map = Maps.newHashMap();
+         Iterator iterator = this.advancements.entrySet().iterator();
+ 
+diff --git a/src/main/java/net/minecraft/server/level/ServerEntity.java b/src/main/java/net/minecraft/server/level/ServerEntity.java
+index 3b144c820531122eb37d41be06c182b5f5dc0724..baccbe27023e0e1214e9125201a4ee9bc7ac344c 100644
+--- a/src/main/java/net/minecraft/server/level/ServerEntity.java
++++ b/src/main/java/net/minecraft/server/level/ServerEntity.java
+@@ -85,6 +85,7 @@ public class ServerEntity {
+     }
+ 
+     public void sendChanges() {
++        if (true) return; // LimboPaper
+         List<Entity> list = this.entity.getPassengers();
+ 
+         if (!list.equals(this.lastPassengers)) {
+@@ -259,6 +260,7 @@ public class ServerEntity {
+     }
+ 
+     public void sendPairingData(Consumer<Packet<?>> consumer, ServerPlayer entityplayer) { // CraftBukkit - add player
++        if (true) return; // LimboPaper
+         if (this.entity.isRemoved()) {
+             // CraftBukkit start - Remove useless error spam, just return
+             // EntityTrackerEntry.LOGGER.warn("Fetching packet for removed entity {}", this.entity);
+@@ -357,6 +359,7 @@ public class ServerEntity {
+     }
+ 
+     private void sendDirtyEntityData() {
++        if (true) return; // LimboPaper
+         SynchedEntityData datawatcher = this.entity.getEntityData();
+ 
+         if (datawatcher.isDirty()) {
+diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
+index 8b3e703ebb497b9166bd211b4247a78891b61aeb..8d281cc25d60c1916e0950aa2bf5691796fdd312 100644
+--- a/src/main/java/net/minecraft/server/level/ServerLevel.java
++++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
+@@ -623,6 +623,13 @@ public class ServerLevel extends Level implements WorldGenLevel {
+         return this.structureManager;
+     }
+ 
++    // LimboPaper start
++    public void limboTick(BooleanSupplier shouldKeepTicking) {
++        if (players.size() <= 10)
++            this.getChunkSource().tick(shouldKeepTicking, true);
++    }
++    // LimboPaper end
++
+     public void tick(BooleanSupplier shouldKeepTicking) {
+         // Paper start - optimise checkDespawn
+         this.playersAffectingSpawning.clear();
+diff --git a/src/main/java/net/minecraft/server/level/ServerPlayer.java b/src/main/java/net/minecraft/server/level/ServerPlayer.java
+index 5819e8e5e3c6f87eb123cf16091ea74357d53b3b..ae3c4f6ece894b6ba2535b2839710e78020596f0 100644
+--- a/src/main/java/net/minecraft/server/level/ServerPlayer.java
++++ b/src/main/java/net/minecraft/server/level/ServerPlayer.java
+@@ -676,6 +676,7 @@ public class ServerPlayer extends Player {
+     }
+ 
+     public void doTick() {
++        if (true) return; // LimboPaper
+         try {
+             if (valid && !this.isSpectator() || !this.touchingUnloadedChunk()) { // Paper - don't tick dead players that are not in the world currently (pending respawn)
+                 super.tick();
+diff --git a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 9ad36447e82a3504576f6c10cb297514a2f69289..c72a76b51f83fed98f4a6efffb0a63c78a143d98 100644
+--- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -367,7 +367,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+         ++this.tickCount;
+         this.knownMovePacketCount = this.receivedMovePacketCount;
+         if (this.clientIsFloating && !this.player.isSleeping() && !this.player.isPassenger()) {
+-            if (++this.aboveGroundTickCount > 80) {
++            if (++this.aboveGroundTickCount > 80 && false) { // LimboPaper
+                 ServerGamePacketListenerImpl.LOGGER.warn("{} was kicked for floating too long!", this.player.getName().getString());
+                 this.disconnect(io.papermc.paper.configuration.GlobalConfiguration.get().messages.kick.flyingPlayer, org.bukkit.event.player.PlayerKickEvent.Cause.FLYING_PLAYER); // Paper - use configurable kick message & kick event cause
+                 return;
+@@ -407,13 +407,13 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+         long currentTime = Util.getMillis();
+         long elapsedTime = currentTime - this.keepAliveTime;
+ 
+-        if (this.keepAlivePending) {
++        if (this.keepAlivePending && false) { // LimboPaper
+             if (!this.processedDisconnect && elapsedTime >= KEEPALIVE_LIMIT) { // check keepalive limit, don't fire if already disconnected
+                 ServerGamePacketListenerImpl.LOGGER.warn("{} was kicked due to keepalive timeout!", this.player.getScoreboardName()); // more info
+                 this.disconnect(Component.translatable("disconnect.timeout", new Object[0]), org.bukkit.event.player.PlayerKickEvent.Cause.TIMEOUT); // Paper - kick event cause
+             }
+         } else {
+-            if (elapsedTime >= 15000L) { // 15 seconds
++            if (elapsedTime >= 15000L && false) { // 15 seconds // LimboPaper
+                 this.keepAlivePending = true;
+                 this.keepAliveTime = currentTime;
+                 this.keepAliveChallenge = currentTime;
+@@ -561,6 +561,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePlayerInput(ServerboundPlayerInputPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         this.player.setPlayerInput(packet.getXxa(), packet.getZza(), packet.isJumping(), packet.isShiftKeyDown());
+     }
+@@ -579,6 +580,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleMoveVehicle(ServerboundMoveVehiclePacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (ServerGamePacketListenerImpl.containsInvalidValues(packet.getX(), packet.getY(), packet.getZ(), packet.getYRot(), packet.getXRot())) {
+             this.disconnect(Component.translatable("multiplayer.disconnect.invalid_vehicle_movement"), org.bukkit.event.player.PlayerKickEvent.Cause.INVALID_VEHICLE_MOVEMENT); // Paper - kick event cause
+@@ -816,6 +818,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleAcceptTeleportPacket(ServerboundAcceptTeleportationPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (packet.getId() == this.awaitingTeleport) {
+             if (this.awaitingPositionFromClient == null) {
+@@ -839,6 +842,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleRecipeBookSeenRecipePacket(ServerboundRecipeBookSeenRecipePacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         Optional<? extends Recipe<?>> optional = this.server.getRecipeManager().byKey(packet.getRecipe()); // CraftBukkit - decompile error
+         ServerRecipeBook recipebookserver = this.player.getRecipeBook();
+@@ -849,12 +853,14 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleRecipeBookChangeSettingsPacket(ServerboundRecipeBookChangeSettingsPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         this.player.getRecipeBook().setBookSetting(packet.getBookType(), packet.isOpen(), packet.isFiltering());
+     }
+ 
+     @Override
+     public void handleSeenAdvancements(ServerboundSeenAdvancementsPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (packet.getAction() == ServerboundSeenAdvancementsPacket.Action.OPENED_TAB) {
+             ResourceLocation minecraftkey = packet.getTab();
+@@ -873,6 +879,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     // Paper end
+     @Override
+     public void handleCustomCommandSuggestions(ServerboundCommandSuggestionPacket packet) {
++        if (true) return; // LimboPaper
+         // PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel()); // Paper - run this async
+         // CraftBukkit start
+         if (this.chatSpamTickCount.addAndGet(io.papermc.paper.configuration.GlobalConfiguration.get().spamLimiter.tabSpamIncrement) > io.papermc.paper.configuration.GlobalConfiguration.get().spamLimiter.tabSpamLimit && !this.server.getPlayerList().isOp(this.player.getGameProfile())) { // Paper start - split and make configurable
+@@ -945,6 +952,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetCommandBlock(ServerboundSetCommandBlockPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (!this.server.isCommandBlockEnabled()) {
+             this.player.sendSystemMessage(Component.translatable("advMode.notEnabled"));
+@@ -1012,6 +1020,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetCommandMinecart(ServerboundSetCommandMinecartPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (!this.server.isCommandBlockEnabled()) {
+             this.player.sendSystemMessage(Component.translatable("advMode.notEnabled"));
+@@ -1036,6 +1045,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePickItem(ServerboundPickItemPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         // Paper start - validate pick item position
+         if (!(packet.getSlot() >= 0 && packet.getSlot() < this.player.getInventory().items.size())) {
+@@ -1052,6 +1062,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleRenameItem(ServerboundRenameItemPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         AbstractContainerMenu container = this.player.containerMenu;
+ 
+@@ -1074,6 +1085,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetBeaconPacket(ServerboundSetBeaconPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         AbstractContainerMenu container = this.player.containerMenu;
+ 
+@@ -1092,6 +1104,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetStructureBlock(ServerboundSetStructureBlockPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos blockposition = packet.getPos();
+@@ -1150,6 +1163,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetJigsawBlock(ServerboundSetJigsawBlockPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos blockposition = packet.getPos();
+@@ -1173,6 +1187,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleJigsawGenerate(ServerboundJigsawGeneratePacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.canUseGameMasterBlocks()) {
+             BlockPos blockposition = packet.getPos();
+@@ -1189,6 +1204,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSelectTrade(ServerboundSelectTradePacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         int i = packet.getItem();
+         AbstractContainerMenu container = this.player.containerMenu;
+@@ -1216,6 +1232,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleEditBook(ServerboundEditBookPacket packet) {
++        if (true) return; // LimboPaper
+         // Paper start
+         if (!this.cserver.isPrimaryThread()) {
+             List<String> pageList = packet.getPages();
+@@ -1353,6 +1370,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleEntityTagQuery(ServerboundEntityTagQuery packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.hasPermissions(2)) {
+             Entity entity = this.player.getLevel().getEntity(packet.getEntityId());
+@@ -1368,6 +1386,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleBlockEntityTagQuery(ServerboundBlockEntityTagQuery packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.hasPermissions(2)) {
+             BlockEntity tileentity = this.player.getLevel().getBlockEntity(packet.getPos());
+@@ -1379,6 +1398,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleMovePlayer(ServerboundMovePlayerPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (ServerGamePacketListenerImpl.containsInvalidValues(packet.getX(0.0D), packet.getY(0.0D), packet.getZ(0.0D), packet.getYRot(0.0F), packet.getXRot(0.0F))) {
+             this.disconnect(Component.translatable("multiplayer.disconnect.invalid_player_movement"), org.bukkit.event.player.PlayerKickEvent.Cause.INVALID_PLAYER_MOVEMENT); // Paper - kick event cause
+@@ -1802,6 +1822,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePlayerAction(ServerboundPlayerActionPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         BlockPos blockposition = packet.getPos();
+@@ -1936,6 +1957,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleUseItemOn(ServerboundUseItemOnPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         if (!this.checkLimit(packet.timestamp)) return; // Spigot - check limit
+@@ -1992,6 +2014,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleUseItem(ServerboundUseItemPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         if (!this.checkLimit(packet.timestamp)) return; // Spigot - check limit
+@@ -2056,6 +2079,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleTeleportToEntityPacket(ServerboundTeleportToEntityPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isSpectator()) {
+             Iterator iterator = this.server.getAllLevels().iterator();
+@@ -2075,6 +2099,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleResourcePackResponse(ServerboundResourcePackPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (packet.getAction() == ServerboundResourcePackPacket.Action.DECLINED && this.server.isResourcePackRequired()) {
+             ServerGamePacketListenerImpl.LOGGER.info("Disconnecting {} due to resource pack rejection", this.player.getGameProfile().getName()); // Paper - Don't print component in resource pack rejection message
+@@ -2089,6 +2114,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePaddleBoat(ServerboundPaddleBoatPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         Entity entity = this.player.getVehicle();
+ 
+@@ -2176,6 +2202,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetCarriedItem(ServerboundSetCarriedItemPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         if (packet.getSlot() >= 0 && packet.getSlot() < Inventory.getSelectionSize()) {
+@@ -2739,6 +2766,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleAnimate(ServerboundSwingPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         this.player.resetLastActionTime();
+@@ -2769,6 +2797,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePlayerCommand(ServerboundPlayerCommandPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         // CraftBukkit start
+         if (this.player.isRemoved()) return;
+@@ -2883,6 +2912,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleInteract(ServerboundInteractPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         ServerLevel worldserver = this.player.getLevel();
+@@ -3029,6 +3059,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleClientCommand(ServerboundClientCommandPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         this.player.resetLastActionTime();
+         ServerboundClientCommandPacket.Action packetplayinclientcommand_enumclientcommand = packet.getAction();
+@@ -3074,6 +3105,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleContainerClick(ServerboundContainerClickPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         this.player.resetLastActionTime();
+@@ -3393,6 +3425,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePlaceRecipe(ServerboundPlaceRecipePacket packet) {
++        if (true) return; // LimboPaper
+         // Paper start
+         if (!org.bukkit.Bukkit.isPrimaryThread()) {
+             if (recipeSpamPackets.addAndGet(io.papermc.paper.configuration.GlobalConfiguration.get().spamLimiter.recipeSpamIncrement) > io.papermc.paper.configuration.GlobalConfiguration.get().spamLimiter.recipeSpamLimit) {
+@@ -3422,6 +3455,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleContainerButtonClick(ServerboundContainerButtonClickPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.isImmobile()) return; // CraftBukkit
+         this.player.resetLastActionTime();
+@@ -3441,6 +3475,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSetCreativeModeSlot(ServerboundSetCreativeModeSlotPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.gameMode.isCreative()) {
+             boolean flag = packet.getSlotNum() < 0;
+@@ -3517,6 +3552,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleSignUpdate(ServerboundSignUpdatePacket packet) {
++        if (true) return; // LimboPaper
+         // Paper start - cap line length - modified clients can send longer data than normal
+         String[] lines = packet.getLines();
+         for (int i = 0; i < lines.length; ++i) {
+@@ -3537,6 +3573,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     }
+ 
+     private void updateSignText(ServerboundSignUpdatePacket packet, List<FilteredText> signText) {
++        if (true) return; // LimboPaper
+         if (this.player.isImmobile()) return; // CraftBukkit
+         this.player.resetLastActionTime();
+         ServerLevel worldserver = this.player.getLevel();
+@@ -3613,6 +3650,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handlePlayerAbilities(ServerboundPlayerAbilitiesPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         // CraftBukkit start
+         if (this.player.getAbilities().mayfly && this.player.getAbilities().flying != packet.isFlying()) {
+@@ -3629,6 +3667,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleClientInformation(ServerboundClientInformationPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         // Paper start - do not accept invalid information
+         if (packet.viewDistance() < 0) {
+@@ -3648,6 +3687,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleCustomPayload(ServerboundCustomPayloadPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (packet.identifier.equals(CUSTOM_REGISTER)) {
+             try {
+@@ -3704,6 +3744,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleChangeDifficulty(ServerboundChangeDifficultyPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.hasPermissions(2) || this.isSingleplayerOwner()) {
+             // this.server.setDifficulty(packet.getDifficulty(), false); // Paper - don't allow clients to change this
+@@ -3712,6 +3753,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleLockDifficulty(ServerboundLockDifficultyPacket packet) {
++        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (this.player.hasPermissions(2) || this.isSingleplayerOwner()) {
+             this.server.setDifficultyLocked(packet.isLocked());
+diff --git a/src/main/java/net/minecraft/server/players/PlayerList.java b/src/main/java/net/minecraft/server/players/PlayerList.java
+index fc755298ebe76d71bd55d547fb82604df1da652a..512a44444288b7c384d8584ecc4fd7e305f432dc 100644
+--- a/src/main/java/net/minecraft/server/players/PlayerList.java
++++ b/src/main/java/net/minecraft/server/players/PlayerList.java
+@@ -377,7 +377,7 @@ public abstract class PlayerList {
+ 
+         final net.kyori.adventure.text.Component jm = playerJoinEvent.joinMessage();
+ 
+-        if (jm != null && !jm.equals(net.kyori.adventure.text.Component.empty())) { // Paper - Adventure
++        if (jm != null && !jm.equals(net.kyori.adventure.text.Component.empty()) && false) { // Paper - Adventure // LimboPaper
+             joinMessage = PaperAdventure.asVanilla(jm); // Paper - Adventure
+             this.server.getPlayerList().broadcastSystemMessage(joinMessage, false); // Paper - Adventure
+         }
+@@ -385,8 +385,9 @@ public abstract class PlayerList {
+ 
+         // CraftBukkit start - sendAll above replaced with this loop
+         ClientboundPlayerInfoPacket packet = new ClientboundPlayerInfoPacket(ClientboundPlayerInfoPacket.Action.ADD_PLAYER, player);
++        player.connection.send(new ClientboundPlayerInfoPacket(ClientboundPlayerInfoPacket.Action.ADD_PLAYER, new ServerPlayer[]{player})); // LimboPaper
+ 
+-        for (int i = 0; i < this.players.size(); ++i) {
++        for (int i = 0; i < this.players.size() && false; ++i) { // LimboPaper
+             ServerPlayer entityplayer1 = (ServerPlayer) this.players.get(i);
+ 
+             if (entityplayer1.getBukkitEntity().canSee(bukkitPlayer)) {
