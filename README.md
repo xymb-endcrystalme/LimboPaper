@@ -16,10 +16,11 @@ On LimboPaper basically all of your queue Bukkit plugins will work.
 
 ## Benchmark
 
-On 3900x it took 46 seconds for 1000 stationary bots to join the server.
-Unfortunately, every subsequent bot join is slower, so 1000 seems to be a limit when it comes to a practical number of bots.
-Afterwards average MSPT is about 1ms and server eats < 1 core.
-That's with no plugins.
+On 3900x it took 46 seconds for 1000 stationary bots to join the server. No plugins.
+
+Unfortunately, joins get slower when the player counts get higher, so 1000 seems to be a **current** limit when it comes to a practical number of bots.
+
+Average MSPT is about 1ms and server eats < 1 core with 1000 bots chilling.
 
 I personally need more performance, so I'll work on it in the future. For a fork slapped in 5 hours I think it's good enough.
 
