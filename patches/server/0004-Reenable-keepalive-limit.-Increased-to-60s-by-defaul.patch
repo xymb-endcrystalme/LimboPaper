@@ -1,0 +1,60 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Xymb <xymb@endcrystal.me>
+Date: Tue, 8 Nov 2022 04:55:27 +0100
+Subject: [PATCH] Reenable keepalive limit. Increased to 60s by default.
+
+
+diff --git a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index 2db55165c086dc109cf0efd11d24badb76b26dd3..c59d2a65234feb2b82561f0ca4063295f8c87193 100644
+--- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -296,7 +296,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+     private final SignedMessageChain.Decoder signedMessageDecoder;
+     private final LastSeenMessagesValidator lastSeenMessagesValidator;
+     private final FutureChain chatMessageChain;
+-    private static final long KEEPALIVE_LIMIT = Long.getLong("paper.playerconnection.keepalive", 30) * 1000; // Paper - provide property to set keepalive limit
++    private static final long KEEPALIVE_LIMIT = Long.getLong("paper.playerconnection.keepalive", 60) * 1000; // Paper - provide property to set keepalive limit
+     private static final int MAX_SIGN_LINE_LENGTH = Integer.getInteger("Paper.maxSignLength", 80); // Paper
+ 
+     private String clientBrandName = null; // Paper - Brand name
+@@ -349,7 +349,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void tick() {
+-        if (true) return; // LimboPaper
++        if (false) { // LimboPaper
+         // Paper start - login async
+         // Don't tick if not valid (dead), otherwise we load chunks below
+         if (this.player.valid) {
+@@ -401,6 +401,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+             this.clientVehicleIsFloating = false;
+             this.aboveGroundVehicleTickCount = 0;
+         }} // Paper - end if (valid)
++        } // LimboPaper
+ 
+         this.server.getProfiler().push("keepAlive");
+         // Paper Start - give clients a longer time to respond to pings as per pre 1.12.2 timings
+@@ -408,13 +409,13 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+         long currentTime = Util.getMillis();
+         long elapsedTime = currentTime - this.keepAliveTime;
+ 
+-        if (this.keepAlivePending && false) { // LimboPaper
++        if (this.keepAlivePending) {
+             if (!this.processedDisconnect && elapsedTime >= KEEPALIVE_LIMIT) { // check keepalive limit, don't fire if already disconnected
+                 ServerGamePacketListenerImpl.LOGGER.warn("{} was kicked due to keepalive timeout!", this.player.getScoreboardName()); // more info
+                 this.disconnect(Component.translatable("disconnect.timeout", new Object[0]), org.bukkit.event.player.PlayerKickEvent.Cause.TIMEOUT); // Paper - kick event cause
+             }
+         } else {
+-            if (elapsedTime >= 15000L && false) { // 15 seconds // LimboPaper
++            if (elapsedTime >= 60000L) { // 15 seconds
+                 this.keepAlivePending = true;
+                 this.keepAliveTime = currentTime;
+                 this.keepAliveChallenge = currentTime;
+@@ -422,6 +423,7 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+             }
+         }
+         // Paper end
++        if (true) return; // LimboPaper
+ 
+         this.server.getProfiler().pop();
+         // CraftBukkit start
