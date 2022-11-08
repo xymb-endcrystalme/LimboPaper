@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Xymb <xymb@endcrystal.me>
+Date: Tue, 8 Nov 2022 04:16:17 +0100
+Subject: [PATCH] Add time ticking.
+
+
+diff --git a/src/main/java/net/minecraft/server/level/ServerLevel.java b/src/main/java/net/minecraft/server/level/ServerLevel.java
+index 8d281cc25d60c1916e0950aa2bf5691796fdd312..a76db3ed7475c2b3e1975e6da6519a8492d7db8b 100644
+--- a/src/main/java/net/minecraft/server/level/ServerLevel.java
++++ b/src/main/java/net/minecraft/server/level/ServerLevel.java
+@@ -627,6 +627,7 @@ public class ServerLevel extends Level implements WorldGenLevel {
+     public void limboTick(BooleanSupplier shouldKeepTicking) {
+         if (players.size() <= 10)
+             this.getChunkSource().tick(shouldKeepTicking, true);
++        this.tickTime();
+     }
+     // LimboPaper end
+ 
