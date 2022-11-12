@@ -1,0 +1,18 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Xymb <xymb@endcrystal.me>
+Date: Sat, 12 Nov 2022 06:33:00 +0100
+Subject: [PATCH] Fix sendPluginMessage.
+
+
+diff --git a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+index c59d2a65234feb2b82561f0ca4063295f8c87193..b25161ec665be0138c18845fde7d5d6ed5580abc 100644
+--- a/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
++++ b/src/main/java/net/minecraft/server/network/ServerGamePacketListenerImpl.java
+@@ -3690,7 +3690,6 @@ public class ServerGamePacketListenerImpl implements ServerPlayerConnection, Tic
+ 
+     @Override
+     public void handleCustomPayload(ServerboundCustomPayloadPacket packet) {
+-        if (true) return; // LimboPaper
+         PacketUtils.ensureRunningOnSameThread(packet, this, this.player.getLevel());
+         if (packet.identifier.equals(CUSTOM_REGISTER)) {
+             try {
